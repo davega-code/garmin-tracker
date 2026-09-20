@@ -1,0 +1,18 @@
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+
+# Garmin credentials/tokens. Treat these like passwords.
+.auth/
+.garminconnect/
+garmin_tokens.json
+*.token*
+.env
+
+# Local personal Garmin data (GPS routes, heart rate, exact locations).
+data/*.json
+state.json
+dashboard/data.js
+

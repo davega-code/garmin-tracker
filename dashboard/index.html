@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Garmin Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  </head>
+  <body>
+    <div class="page">
+      <header class="top">
+        <h1>Garmin Tracker</h1>
+        <div class="top-controls">
+          <button class="unit-toggle" id="unit-toggle" type="button" hidden></button>
+          <nav class="mode-switch" role="tablist" aria-label="Activity type">
+            <button class="mode" id="mode-strength" role="tab" aria-selected="true" data-mode="strength">Strength</button>
+            <button class="mode" id="mode-running" role="tab" aria-selected="false" data-mode="running">Running</button>
+          </nav>
+        </div>
+      </header>
+
+      <div class="mode-panel" id="panel-strength" data-mode="strength">
+        <section class="hero" aria-label="Strength overview">
+          <div class="hero-figure">
+            <div class="row">
+              <span class="hero-number" id="s-hero-number">0</span>
+              <span class="hero-unit" id="s-hero-unit">kg lifted, last 4 weeks</span>
+            </div>
+            <span class="hero-trend" id="s-hero-trend"></span>
+          </div>
+          <dl class="hero-stats">
+            <div><dd id="s-stat-workouts">0</dd><dt>Workouts</dt></div>
+            <div><dd id="s-stat-prs">0</dd><dt>New PRs</dt></div>
+            <div><dd id="s-stat-last">—</dd><dt>Last workout</dt></div>
+          </dl>
+        </section>
+
+        <nav class="tabs" role="tablist" aria-label="Strength view">
+          <button class="tab" role="tab" id="tab-log" aria-selected="true" data-view="log">Log</button>
+          <button class="tab" role="tab" id="tab-routines" aria-selected="false" data-view="routines">Routines</button>
+          <button class="tab" role="tab" id="tab-exercises" aria-selected="false" data-view="exercises">Exercises</button>
+        </nav>
+
+        <section class="view" id="view-log" data-view="log" role="tabpanel" aria-labelledby="tab-log">
+          <ol class="workout-list" id="workout-list"></ol>
+        </section>
+
+        <section class="view" id="view-routines" data-view="routines" role="tabpanel" aria-labelledby="tab-routines" hidden>
+          <div class="chip-row" id="routine-picker"></div>
+          <div class="detail" id="routine-detail"></div>
+        </section>
+
+        <section class="view" id="view-exercises" data-view="exercises" role="tabpanel" aria-labelledby="tab-exercises" hidden>
+          <div class="chip-row" id="exercise-picker"></div>
+          <div class="detail" id="exercise-detail"></div>
+        </section>
+
+        <p class="empty" id="s-empty" hidden>
+          No workouts synced yet. Run <code>garmin-tracker sync</code> first.
+        </p>
+      </div>
+
+      <div class="mode-panel" id="panel-running" data-mode="running" hidden>
+        <section class="hero" aria-label="Running overview">
+          <div class="hero-figure">
+            <div class="row">
+              <span class="hero-number" id="r-hero-number">0</span>
+              <span class="hero-unit">km run, last 4 weeks</span>
+            </div>
+            <span class="hero-trend" id="r-hero-trend"></span>
+          </div>
+          <dl class="hero-stats">
+            <div><dd id="r-stat-runs">0</dd><dt>Runs</dt></div>
+            <div><dd id="r-stat-pace">—</dd><dt>Best pace</dt></div>
+            <div><dd id="r-stat-last">—</dd><dt>Last run</dt></div>
+          </dl>
+        </section>
+
+        <nav class="tabs" role="tablist" aria-label="Running view">
+          <button class="tab" role="tab" id="tab-runs" aria-selected="true" data-view="runs">Runs</button>
+          <button class="tab" role="tab" id="tab-trends" aria-selected="false" data-view="trends">Trends</button>
+        </nav>
+
+        <section class="view" id="view-runs" data-view="runs" role="tabpanel" aria-labelledby="tab-runs">
+          <ol class="workout-list" id="run-list"></ol>
+        </section>
+
+        <section class="view" id="view-trends" data-view="trends" role="tabpanel" aria-labelledby="tab-trends" hidden>
+          <div class="chip-row" id="metric-picker"></div>
+          <div class="detail" id="metric-detail"></div>
+        </section>
+
+        <p class="empty" id="r-empty" hidden>
+          No runs synced yet. Run <code>garmin-tracker sync</code> first.
+        </p>
+      </div>
+    </div>
+    <script src="data.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
+
