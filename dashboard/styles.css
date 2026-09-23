@@ -413,6 +413,47 @@ button {
   border-color: var(--brass);
 }
 
+.progress-list {
+  display: grid;
+  gap: 12px;
+  list-style: none;
+  margin: 24px 0 0;
+  padding: 0;
+}
+
+.progress-card {
+  align-items: center;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--ink-dim);
+  display: grid;
+  gap: 8px 16px;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  padding: 14px 16px;
+}
+
+.progress-card.ready {
+  border-color: var(--brass);
+}
+
+.progress-card strong,
+.progress-target {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.progress-card span span {
+  display: block;
+  font-size: 0.875rem;
+  margin-top: 2px;
+}
+
+.progress-card code {
+  background: var(--bg);
+  color: var(--ink-dim);
+  padding: 3px 6px;
+}
+
 .chart {
   height: auto;
   margin: 20px 0 8px;

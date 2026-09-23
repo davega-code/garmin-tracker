@@ -26,6 +26,7 @@ const els = {
   sStatPRs: document.querySelector("#s-stat-prs"),
   sStatLast: document.querySelector("#s-stat-last"),
   workoutList: document.querySelector("#workout-list"),
+  progressList: document.querySelector("#progress-list"),
   routinePicker: document.querySelector("#routine-picker"),
   routineDetail: document.querySelector("#routine-detail"),
   exercisePicker: document.querySelector("#exercise-picker"),
@@ -94,6 +95,7 @@ function renderStrengthAll() {
   const routineHistory = buildRoutineHistory(workouts);
   renderStrengthHero(workouts, exerciseHistory);
   renderWorkouts(workouts);
+  renderProgress(exerciseHistory);
   renderRoutinePicker(routineHistory);
   renderExercisePicker(exerciseHistory);
 }
@@ -437,10 +439,10 @@ function progressiveOverloadTarget(entry) {
 
   const displayCurrent = convertWeight(current);
   const displayStep = weightUnit === "lb" ? (displayCurrent >= 100 ? 10 : 5) : displayCurrent >= 45 ? 5 : 2.5;
-  const stepKg = weightUnit === "lb" ? displayStep * KG_PER_LB : displayStep;
+  const displayNext = round(displayCurrent, 1) + displayStep;
   return {
     current,
-    next: current + stepKg,
+    next: weightUnit === "lb" ? displayNext * KG_PER_LB : displayNext,
     reps: Math.min(...ready.map((p) => Number(p.reps))),
     sessions: ready.length,
   };
@@ -459,6 +461,40 @@ function targetCard(target) {
       <strong>Target weight: ${formatWeight(target.next)}</strong>
       <span>Increase from ${formatWeight(target.current)} after ${target.sessions} straight sessions at ${target.reps}+ reps.</span>
     </div>`;
+}
+
+// ---------- progress view ----------
+
+function renderProgress(history) {
+  const updates = [...history.entries()]
+    .map(([name, entry]) => ({ name, target: progressiveOverloadTarget(entry) }))
+    .filter((item) => item.target)
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  if (updates.length === 0) {
+    els.progressList.innerHTML = `
+      <li class="progress-card">
+        <strong>No updates ready</strong>
+        <span>Keep logging sets until an exercise reaches ${OVERLOAD_REPS}+ reps for ${OVERLOAD_SESSIONS} straight sessions at the same weight.</span>
+      </li>`;
+    return;
+  }
+
+  els.progressList.replaceChildren(...updates.map(progressRow));
+}
+
+function progressRow({ name, target }) {
+  const li = document.createElement("li");
+  li.className = "progress-card ready";
+  li.innerHTML = `
+    <span>
+      <strong>${humanize(name)}</strong>
+      <span>${target.sessions} straight sessions at ${target.reps}+ reps</span>
+    </span>
+    <span class="progress-target">${formatWeight(target.current)} → ${formatWeight(target.next)}</span>
+    <code>garmin-tracker progress --unit ${weightUnit}</code>
+  `;
+  return li;
 }
 
 // ---------- routines view ----------

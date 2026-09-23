@@ -38,12 +38,17 @@
 
         <nav class="tabs" role="tablist" aria-label="Strength view">
           <button class="tab" role="tab" id="tab-log" aria-selected="true" data-view="log">Log</button>
+          <button class="tab" role="tab" id="tab-progress" aria-selected="false" data-view="progress">Progress</button>
           <button class="tab" role="tab" id="tab-routines" aria-selected="false" data-view="routines">Routines</button>
           <button class="tab" role="tab" id="tab-exercises" aria-selected="false" data-view="exercises">Exercises</button>
         </nav>
 
         <section class="view" id="view-log" data-view="log" role="tabpanel" aria-labelledby="tab-log">
           <ol class="workout-list" id="workout-list"></ol>
+        </section>
+
+        <section class="view" id="view-progress" data-view="progress" role="tabpanel" aria-labelledby="tab-progress" hidden>
+          <ol class="progress-list" id="progress-list"></ol>
         </section>
 
         <section class="view" id="view-routines" data-view="routines" role="tabpanel" aria-labelledby="tab-routines" hidden>
@@ -101,4 +106,3 @@
     <script src="app.js"></script>
   </body>
 </html>
-
