@@ -8,6 +8,7 @@ from typing import Any
 from garminconnect import Garmin
 
 from .paths import ensure_dirs, token_store
+from .workout_targets import update_strength_target
 
 
 logging.getLogger("garminconnect").setLevel(logging.WARNING)
@@ -75,9 +76,45 @@ def activity_details(client: Garmin, activity_id: int | str, maxpoly: int = 50) 
     return client.get_activity_details(activity_id, maxpoly=maxpoly)
 
 
+def workouts(client: Garmin, start: int = 0, limit: int = 100) -> list[dict[str, Any]]:
+    if hasattr(client, "get_workouts"):
+        return client.get_workouts(start=start, limit=limit)
+    return client.connectapi("/workout-service/workouts", params={"start": start, "limit": limit})
+
+
+def workout_by_id(client: Garmin, workout_id: int | str) -> dict[str, Any]:
+    if hasattr(client, "get_workout_by_id"):
+        return client.get_workout_by_id(workout_id)
+    return client.connectapi(f"/workout-service/workout/{workout_id}")
+
+
+def update_workout(client: Garmin, workout_id: int | str, workout: dict[str, Any]) -> dict[str, Any]:
+    if hasattr(client, "update_workout"):
+        return client.update_workout(workout_id, workout)
+    body = workout | {"workoutId": int(workout_id)}
+    return client.client.put("connectapi", f"/workout-service/workout/{workout_id}", json=body, api=True).json()
+
+
+def update_workout_target(
+    client: Garmin,
+    workout_id: int | str,
+    exercise_name: str,
+    target_weight_kg: float,
+    apply: bool = False,
+) -> tuple[dict[str, Any], int]:
+    if target_weight_kg <= 0:
+        raise ValueError("target_weight_kg must be positive.")
+    workout = workout_by_id(client, workout_id)
+    matches = update_strength_target(workout, exercise_name, target_weight_kg)
+    if matches == 0:
+        raise ValueError(f"No matching strength step found for {exercise_name!r} in workout {workout_id}.")
+    if apply:
+        update_workout(client, workout_id, workout)
+    return workout, matches
+
+
 def _activity_date(activity: dict[str, Any]) -> date | None:
     value = activity.get("startTimeLocal") or activity.get("startTimeGMT")
     if not value:
         return None
     return datetime.fromisoformat(str(value)[:19]).date()
-

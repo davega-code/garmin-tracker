@@ -19,6 +19,12 @@ def main() -> None:
     sub.add_parser("auth")
     sub.add_parser("sync")
     sub.add_parser("analyze")
+    sub.add_parser("workouts")
+    target = sub.add_parser("workout-target")
+    target.add_argument("workout_id")
+    target.add_argument("exercise")
+    target.add_argument("target_weight_kg", type=float)
+    target.add_argument("--apply", action="store_true", help="Actually update Garmin; without this, only previews.")
     dash = sub.add_parser("dashboard")
     dash.add_argument("--port", type=int, default=8765)
 
@@ -32,6 +38,10 @@ def main() -> None:
         sync()
     elif args.cmd == "analyze":
         print(summarize())
+    elif args.cmd == "workouts":
+        list_workouts()
+    elif args.cmd == "workout-target":
+        workout_target(args.workout_id, args.exercise, args.target_weight_kg, args.apply)
     elif args.cmd == "dashboard":
         dashboard(args.port)
 
@@ -81,6 +91,21 @@ def dashboard(port: int) -> None:
         server.serve_forever()
 
 
+def list_workouts() -> None:
+    client = garmin_client.login()
+    for workout in garmin_client.workouts(client):
+        sport = (workout.get("sportType") or {}).get("sportTypeKey") or "unknown"
+        print(f"{workout.get('workoutId')}\t{sport}\t{workout.get('workoutName')}")
+
+
+def workout_target(workout_id: str, exercise: str, target_weight_kg: float, apply: bool) -> None:
+    client = garmin_client.login()
+    workout, matches = garmin_client.update_workout_target(client, workout_id, exercise, target_weight_kg, apply=apply)
+    verb = "Updated" if apply else "Previewed"
+    suffix = "" if apply else " Re-run with --apply to confirm and write to Garmin."
+    print(f"{verb} {matches} step(s) in {workout.get('workoutName') or workout_id} to {target_weight_kg:g} kg.{suffix}")
+
+
 class _DashboardHandler(http.server.SimpleHTTPRequestHandler):
     def end_headers(self) -> None:
         # This is under active development; never let the browser serve a cached copy.
@@ -99,4 +124,3 @@ class _DashboardServer(socketserver.TCPServer):
 
 if __name__ == "__main__":
     main()
-

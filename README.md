@@ -29,11 +29,17 @@ garmin-tracker auth
 garmin-tracker sync
 garmin-tracker dashboard
 garmin-tracker analyze
+garmin-tracker workouts
+garmin-tracker workout-target <workout-id> <exercise> <target-weight-kg> [--apply]
 ```
 
 `auth` prompts for your Garmin email, password, and MFA if needed. The password is never stored. Tokens are cached outside the repo in `%LOCALAPPDATA%\garmin-tracker\garminconnect`.
 
 `sync` pulls your full history the first time, then only new activities on later runs.
+
+`workouts` lists Garmin workout templates. `workout-target` previews a target-weight change
+for a strength step; add `--apply` only after confirming the preview is the workout and
+exercise you want to update in Garmin.
 
 ## Dashboard
 
