@@ -164,7 +164,10 @@ def progress_matches(client: garmin_client.Garmin, recs: list[ProgressRecommenda
 
 def prompt_selection(count: int) -> list[int]:
     while True:
-        answer = input("\nApply which updates? [all, numbers like 1,3, or blank to skip]: ").strip().lower()
+        try:
+            answer = input("\nApply which updates? [all, numbers like 1,3, or blank to skip]: ").strip().lower()
+        except EOFError:
+            return []
         if not answer or answer in {"n", "no", "none", "skip"}:
             return []
         if answer in {"a", "all"}:

@@ -58,17 +58,20 @@ def _recommendation(points: list[dict[str, Any]], unit: str) -> ProgressRecommen
     ready = recent[:OVERLOAD_SESSIONS]
     if len(ready) < OVERLOAD_SESSIONS or any(point["reps"] < OVERLOAD_REPS for point in ready):
         return None
+    target = _display_target_kg(current, unit)
     return ProgressRecommendation(
         exercise=str(points[-1]["exercise"]),
         current_weight_kg=current,
-        target_weight_kg=current + _step_kg(current, unit),
+        target_weight_kg=target,
         reps=min(point["reps"] for point in ready),
         sessions=len(ready),
     )
 
 
-def _step_kg(current_weight_kg: float, unit: str) -> float:
+def _display_target_kg(current_weight_kg: float, unit: str) -> float:
     if unit == "lb":
         current_lb = current_weight_kg / KG_PER_LB
-        return (10 if current_lb >= 100 else 5) * KG_PER_LB
-    return 5 if current_weight_kg >= 45 else 2.5
+        step = 10 if current_lb >= 100 else 5
+        return (round(current_lb, 1) + step) * KG_PER_LB
+    step = 5 if current_weight_kg >= 45 else 2.5
+    return round(current_weight_kg, 1) + step
