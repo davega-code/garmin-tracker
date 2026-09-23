@@ -12,6 +12,8 @@ const runs = allActivities
 
 const FOUR_WEEKS_MS = 28 * 24 * 60 * 60 * 1000;
 const KG_PER_LB = 1 / 2.2046226218;
+const OVERLOAD_REPS = 9;
+const OVERLOAD_SESSIONS = 2;
 
 let weightUnit = localStorage.getItem("gt-weight-unit") || "kg";
 
@@ -399,6 +401,7 @@ function selectExercise(name, history) {
 
 function renderExerciseDetail(name, entry) {
   const prPoint = entry.points.find((p) => p.value === entry.maxValue);
+  const target = progressiveOverloadTarget(entry);
   els.exerciseDetail.innerHTML = `
     <div class="detail-heading">
       <h2>${humanize(name)}</h2>
@@ -408,12 +411,54 @@ function renderExerciseDetail(name, entry) {
         <strong>${formatWeight(entry.volume)}</strong> total volume
       </p>
     </div>
+    ${targetCard(target)}
     ${lineChart(entry.points, {
       prPoint,
       formatValue: (v) => round(convertWeight(v), 0).toLocaleString(),
       formatTooltip: (p) => `${formatDateShort(p.date)}: ${formatWeight(p.value)} × ${p.reps ?? "?"} reps`,
     })}
   `;
+}
+
+function progressiveOverloadTarget(entry) {
+  const points = entry.points.filter((p) => p.value > 0 && Number(p.reps) > 0);
+  if (points.length < OVERLOAD_SESSIONS) return null;
+
+  const current = points[points.length - 1].value;
+  const recentAtCurrent = [];
+  for (let i = points.length - 1; i >= 0 && points[i].value === current; i -= 1) {
+    recentAtCurrent.push(points[i]);
+  }
+
+  const ready = recentAtCurrent.slice(0, OVERLOAD_SESSIONS);
+  if (ready.length < OVERLOAD_SESSIONS || ready.some((p) => Number(p.reps) < OVERLOAD_REPS)) {
+    return null;
+  }
+
+  const displayCurrent = convertWeight(current);
+  const displayStep = weightUnit === "lb" ? (displayCurrent >= 100 ? 10 : 5) : displayCurrent >= 45 ? 5 : 2.5;
+  const stepKg = weightUnit === "lb" ? displayStep * KG_PER_LB : displayStep;
+  return {
+    current,
+    next: current + stepKg,
+    reps: Math.min(...ready.map((p) => Number(p.reps))),
+    sessions: ready.length,
+  };
+}
+
+function targetCard(target) {
+  if (!target) {
+    return `
+      <div class="target-card">
+        <strong>Target weight</strong>
+        <span>Hold current load until ${OVERLOAD_SESSIONS} straight sessions reach ${OVERLOAD_REPS}-${OVERLOAD_REPS + 1} reps.</span>
+      </div>`;
+  }
+  return `
+    <div class="target-card ready">
+      <strong>Target weight: ${formatWeight(target.next)}</strong>
+      <span>Increase from ${formatWeight(target.current)} after ${target.sessions} straight sessions at ${target.reps}+ reps.</span>
+    </div>`;
 }
 
 // ---------- routines view ----------
@@ -677,4 +722,3 @@ function lineChart(points, options = {}) {
       ${dots}
     </svg>`;
 }
-

@@ -392,6 +392,27 @@ button {
   font-weight: 600;
 }
 
+.target-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--ink-dim);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: 0.9rem;
+  gap: 6px 12px;
+  margin: 16px 0 4px;
+  padding: 12px 14px;
+}
+
+.target-card strong {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.target-card.ready {
+  border-color: var(--brass);
+}
+
 .chart {
   height: auto;
   margin: 20px 0 8px;
@@ -452,4 +473,3 @@ button {
   border-radius: 3px;
   padding: 2px 6px;
 }
-

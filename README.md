@@ -41,7 +41,8 @@ garmin-tracker analyze
 
 - **Strength** — a chronological log of sessions, a **Routines** view (trend per recurring
   workout name, e.g. "Leg Day"), and an **Exercises** view (weight progression per lift, with
-  personal records marked). Switch weight units (kg/lb) from the header.
+  personal records marked and target-weight suggestions for progressive overload). Switch
+  weight units (kg/lb) from the header.
 - **Running** — a log of runs with pace, heart rate, and a route map (via
   [Leaflet](https://leafletjs.com/) and OpenStreetMap tiles, so viewing a route needs internet;
   everything else works offline), plus a **Trends** view for distance/pace/heart rate over time.
