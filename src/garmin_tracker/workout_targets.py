@@ -25,7 +25,7 @@ def matching_strength_steps(workout: dict[str, Any], exercise_name: str) -> list
             for name in [step.get("exerciseName"), step.get("category"), step.get("description"), step.get("stepName")]
             if name
         }
-        if any(wanted == candidate or wanted in candidate or candidate in wanted for candidate in candidates):
+        if wanted in candidates:
             result.append(step)
     return result
 
