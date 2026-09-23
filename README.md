@@ -30,7 +30,7 @@ garmin-tracker sync
 garmin-tracker dashboard
 garmin-tracker analyze
 garmin-tracker workouts
-garmin-tracker workout-target <workout-id> <exercise> <target-weight-kg> [--apply]
+garmin-tracker workout-target <workout-id> <exercise> <target-weight> [--unit kg|lb] [--apply]
 ```
 
 `auth` prompts for your Garmin email, password, and MFA if needed. The password is never stored. Tokens are cached outside the repo in `%LOCALAPPDATA%\garmin-tracker\garminconnect`.

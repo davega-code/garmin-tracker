@@ -23,7 +23,8 @@ def main() -> None:
     target = sub.add_parser("workout-target")
     target.add_argument("workout_id")
     target.add_argument("exercise")
-    target.add_argument("target_weight_kg", type=float)
+    target.add_argument("target_weight", type=float)
+    target.add_argument("--unit", choices=("kg", "lb"), default="kg")
     target.add_argument("--apply", action="store_true", help="Actually update Garmin; without this, only previews.")
     dash = sub.add_parser("dashboard")
     dash.add_argument("--port", type=int, default=8765)
@@ -41,7 +42,7 @@ def main() -> None:
     elif args.cmd == "workouts":
         list_workouts()
     elif args.cmd == "workout-target":
-        workout_target(args.workout_id, args.exercise, args.target_weight_kg, args.apply)
+        workout_target(args.workout_id, args.exercise, args.target_weight, args.unit, args.apply)
     elif args.cmd == "dashboard":
         dashboard(args.port)
 
@@ -98,12 +99,13 @@ def list_workouts() -> None:
         print(f"{workout.get('workoutId')}\t{sport}\t{workout.get('workoutName')}")
 
 
-def workout_target(workout_id: str, exercise: str, target_weight_kg: float, apply: bool) -> None:
+def workout_target(workout_id: str, exercise: str, target_weight: float, unit: str, apply: bool) -> None:
     client = garmin_client.login()
+    target_weight_kg = target_weight / 2.2046226218 if unit == "lb" else target_weight
     workout, matches = garmin_client.update_workout_target(client, workout_id, exercise, target_weight_kg, apply=apply)
     verb = "Updated" if apply else "Previewed"
     suffix = "" if apply else " Re-run with --apply to confirm and write to Garmin."
-    print(f"{verb} {matches} step(s) in {workout.get('workoutName') or workout_id} to {target_weight_kg:g} kg.{suffix}")
+    print(f"{verb} {matches} step(s) in {workout.get('workoutName') or workout_id} to {target_weight:g} {unit}.{suffix}")
 
 
 class _DashboardHandler(http.server.SimpleHTTPRequestHandler):
