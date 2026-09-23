@@ -3,6 +3,14 @@
 Small local Garmin strength-training and running tracker, with a dashboard that runs entirely
 on your own machine.
 
+<div style="display: flex; justify-content: space-between; align-items: center;">
+  <img width="32%" alt="image" src="https://github.com/user-attachments/assets/342e1d8b-a3a9-4bb9-a3e4-0ad005438905" />
+  <img width="32%" alt="image" src="https://github.com/user-attachments/assets/1a9f6f8b-15bb-4885-bc94-be598ff01a68" />
+  <img width="32%" alt="image" src="https://github.com/user-attachments/assets/64baed62-67c7-4dba-827e-8f627bfbf7fa" />
+</div>
+
+
+
 ## Setup
 
 Requires [uv](https://docs.astral.sh/uv/) and Python 3.12+.
