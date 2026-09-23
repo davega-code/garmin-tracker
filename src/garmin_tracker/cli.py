@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import http.server
 import json
 import socketserver
@@ -11,6 +12,8 @@ from typing import Any
 from . import garmin_client, normalize, state, store
 from .analysis import summarize
 from .paths import DASHBOARD_DIR, ensure_dirs
+from .progress import ProgressRecommendation, recommendations
+from .workout_targets import matching_strength_steps, update_strength_target
 
 
 def main() -> None:
@@ -19,8 +22,9 @@ def main() -> None:
     sub.add_parser("auth")
     sub.add_parser("sync")
     sub.add_parser("analyze")
-    sub.add_parser("workouts")
-    target = sub.add_parser("workout-target")
+    progress = sub.add_parser("progress")
+    progress.add_argument("--unit", choices=("kg", "lb"), default="kg")
+    target = sub.add_parser("update-workout")
     target.add_argument("workout_id")
     target.add_argument("exercise")
     target.add_argument("target_weight", type=float)
@@ -39,9 +43,9 @@ def main() -> None:
         sync()
     elif args.cmd == "analyze":
         print(summarize())
-    elif args.cmd == "workouts":
-        list_workouts()
-    elif args.cmd == "workout-target":
+    elif args.cmd == "progress":
+        progress_updates(args.unit)
+    elif args.cmd == "update-workout":
         workout_target(args.workout_id, args.exercise, args.target_weight, args.unit, args.apply)
     elif args.cmd == "dashboard":
         dashboard(args.port)
@@ -92,11 +96,86 @@ def dashboard(port: int) -> None:
         server.serve_forever()
 
 
-def list_workouts() -> None:
+def progress_updates(unit: str) -> None:
+    recs = recommendations(store.load_all(), unit)
+    if not recs:
+        print("No progressive overload updates ready. Keep logging sets until an exercise hits 9+ reps for 2 straight sessions.")
+        return
+
+    print("Ready target-weight recommendations:")
+    for i, rec in enumerate(recs, start=1):
+        print(f"{i}. {rec.exercise}: {format_weight(rec.current_weight_kg, unit)} -> {format_weight(rec.target_weight_kg, unit)} ({rec.sessions} sessions at {rec.reps}+ reps)")
+
     client = garmin_client.login()
-    for workout in garmin_client.workouts(client):
-        sport = (workout.get("sportType") or {}).get("sportTypeKey") or "unknown"
-        print(f"{workout.get('workoutId')}\t{sport}\t{workout.get('workoutName')}")
+    matches = progress_matches(client, recs)
+    matches = [match for match in matches if match["steps"] > 0]
+    if not matches:
+        print("No matching Garmin workout-template steps found. Use `garmin-tracker update-workout` for a manual update.")
+        return
+
+    print("\nGarmin updates to apply:")
+    for i, match in enumerate(matches, start=1):
+        rec = match["recommendation"]
+        print(
+            f"{i}. {match['workout_name']}: {rec.exercise} -> {format_weight(rec.target_weight_kg, unit)} "
+            f"({match['steps']} step{'s' if match['steps'] != 1 else ''})"
+        )
+
+    selected = prompt_selection(len(matches))
+    if not selected:
+        print("Skipped Garmin updates.")
+        return
+
+    changed: dict[str, dict[str, Any]] = {}
+    for index in selected:
+        match = matches[index - 1]
+        workout_id = str(match["workout_id"])
+        workout = changed.setdefault(workout_id, copy.deepcopy(match["workout"]))
+        rec = match["recommendation"]
+        update_strength_target(workout, rec.exercise, rec.target_weight_kg)
+
+    for workout_id, workout in changed.items():
+        garmin_client.update_workout(client, workout_id, workout)
+    print(f"Updated {len(changed)} Garmin workout template(s).")
+
+
+def progress_matches(client: garmin_client.Garmin, recs: list[ProgressRecommendation]) -> list[dict[str, Any]]:
+    matches: list[dict[str, Any]] = []
+    for summary in garmin_client.workouts(client):
+        workout_id = summary.get("workoutId")
+        if not workout_id:
+            continue
+        workout = garmin_client.workout_by_id(client, workout_id)
+        workout_name = workout.get("workoutName") or summary.get("workoutName") or workout_id
+        for rec in recs:
+            steps = len(matching_strength_steps(workout, rec.exercise))
+            if steps:
+                matches.append(
+                    {
+                        "workout_id": workout_id,
+                        "workout_name": workout_name,
+                        "workout": workout,
+                        "recommendation": rec,
+                        "steps": steps,
+                    }
+                )
+    return matches
+
+
+def prompt_selection(count: int) -> list[int]:
+    while True:
+        answer = input("\nApply which updates? [all, numbers like 1,3, or blank to skip]: ").strip().lower()
+        if not answer or answer in {"n", "no", "none", "skip"}:
+            return []
+        if answer in {"a", "all"}:
+            return list(range(1, count + 1))
+        try:
+            selected = sorted({int(part.strip()) for part in answer.split(",") if part.strip()})
+        except ValueError:
+            selected = []
+        if selected and all(1 <= item <= count for item in selected):
+            return selected
+        print(f"Enter all, blank, or numbers between 1 and {count}.")
 
 
 def workout_target(workout_id: str, exercise: str, target_weight: float, unit: str, apply: bool) -> None:
@@ -106,6 +185,11 @@ def workout_target(workout_id: str, exercise: str, target_weight: float, unit: s
     verb = "Updated" if apply else "Previewed"
     suffix = "" if apply else " Re-run with --apply to confirm and write to Garmin."
     print(f"{verb} {matches} step(s) in {workout.get('workoutName') or workout_id} to {target_weight:g} {unit}.{suffix}")
+
+
+def format_weight(weight_kg: float, unit: str) -> str:
+    value = weight_kg * 2.2046226218 if unit == "lb" else weight_kg
+    return f"{round(value, 1):g} {unit}"
 
 
 class _DashboardHandler(http.server.SimpleHTTPRequestHandler):
