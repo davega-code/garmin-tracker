@@ -4,8 +4,9 @@ from dataclasses import dataclass
 from typing import Any
 
 
-OVERLOAD_REPS = 9
+OVERLOAD_REPS = 8
 OVERLOAD_SESSIONS = 2
+STALE_TEMPLATE_SESSIONS = 3
 KG_PER_LB = 1 / 2.2046226218
 
 
@@ -16,12 +17,34 @@ class ProgressRecommendation:
     target_weight_kg: float
     reps: int
     sessions: int
+    reason: str = "reps"
 
 
-def recommendations(activities: list[dict[str, Any]], unit: str = "kg") -> list[ProgressRecommendation]:
+def recommendations(
+    activities: list[dict[str, Any]],
+    unit: str = "kg",
+    configured_weights_kg: dict[str, float] | None = None,
+) -> list[ProgressRecommendation]:
     history = _exercise_history(activities)
-    ready = [rec for points in history.values() if (rec := _recommendation(points, unit))]
+    configured_weights_kg = configured_weights_kg or {}
+    ready = [
+        rec
+        for exercise, points in history.items()
+        if (rec := _recommendation(points, unit, configured_weights_kg.get(exercise)))
+    ]
     return sorted(ready, key=lambda rec: rec.exercise)
+
+
+def recommendation_for_points(
+    points: list[dict[str, Any]],
+    unit: str,
+    configured_weight_kg: float | None = None,
+) -> ProgressRecommendation | None:
+    return _recommendation(points, unit, configured_weight_kg)
+
+
+def exercise_history(activities: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
+    return _exercise_history(activities)
 
 
 def _exercise_history(activities: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
@@ -39,14 +62,22 @@ def _exercise_history(activities: list[dict[str, Any]]) -> dict[str, list[dict[s
             if not exercise or weight <= 0 or reps <= 0:
                 continue
             current = best.get(exercise)
-            if not current or weight > current["weight"]:
+            if (
+                not current
+                or weight > current["weight"]
+                or (weight == current["weight"] and reps > current["reps"])
+            ):
                 best[exercise] = {"exercise": exercise, "weight": weight, "reps": reps}
         for exercise, point in best.items():
             history.setdefault(exercise, []).append(point)
     return history
 
 
-def _recommendation(points: list[dict[str, Any]], unit: str) -> ProgressRecommendation | None:
+def _recommendation(
+    points: list[dict[str, Any]],
+    unit: str,
+    configured_weight_kg: float | None = None,
+) -> ProgressRecommendation | None:
     if len(points) < OVERLOAD_SESSIONS:
         return None
     current = points[-1]["weight"]
@@ -56,15 +87,24 @@ def _recommendation(points: list[dict[str, Any]], unit: str) -> ProgressRecommen
             break
         recent.append(point)
     ready = recent[:OVERLOAD_SESSIONS]
-    if len(ready) < OVERLOAD_SESSIONS or any(point["reps"] < OVERLOAD_REPS for point in ready):
+    reps_ready = len(ready) >= OVERLOAD_SESSIONS and all(
+        point["reps"] >= OVERLOAD_REPS for point in ready
+    )
+    stale_template_ready = (
+        configured_weight_kg is not None
+        and current > configured_weight_kg
+        and len(recent) >= STALE_TEMPLATE_SESSIONS
+    )
+    if not reps_ready and not stale_template_ready:
         return None
-    target = _display_target_kg(current, unit)
+    target = _display_target_kg(current, unit) if reps_ready else current
     return ProgressRecommendation(
         exercise=str(points[-1]["exercise"]),
         current_weight_kg=current,
         target_weight_kg=target,
-        reps=min(point["reps"] for point in ready),
-        sessions=len(ready),
+        reps=min(point["reps"] for point in ready) if reps_ready else max(point["reps"] for point in recent),
+        sessions=len(ready) if reps_ready else len(recent),
+        reason="reps" if reps_ready else "configured_weight",
     )
 
 

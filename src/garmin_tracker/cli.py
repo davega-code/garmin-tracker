@@ -12,8 +12,8 @@ from typing import Any
 from . import garmin_client, normalize, state, store
 from .analysis import summarize
 from .paths import DASHBOARD_DIR, ensure_dirs
-from .progress import ProgressRecommendation, recommendations
-from .workout_targets import matching_strength_steps, update_strength_target
+from .progress import exercise_history, recommendation_for_points, recommendations
+from .workout_targets import configured_strength_weight_kg, matching_strength_steps, update_strength_target
 
 
 def main() -> None:
@@ -97,28 +97,36 @@ def dashboard(port: int) -> None:
 
 
 def progress_updates(unit: str) -> None:
-    recs = recommendations(store.load_all(), unit)
-    if not recs:
-        print("No progressive overload updates ready. Keep logging sets until an exercise hits 9+ reps for 2 straight sessions.")
-        return
+    activities = store.load_all()
+    recs = recommendations(activities, unit)
 
-    print("Ready target-weight recommendations:")
-    for i, rec in enumerate(recs, start=1):
-        print(f"{i}. {rec.exercise}: {format_weight(rec.current_weight_kg, unit)} -> {format_weight(rec.target_weight_kg, unit)} ({rec.sessions} sessions at {rec.reps}+ reps)")
+    if recs:
+        print("Ready target-weight recommendations:")
+        for i, rec in enumerate(recs, start=1):
+            print(
+                f"{i}. {rec.exercise}: {format_weight(rec.current_weight_kg, unit)} "
+                f"-> {format_weight(rec.target_weight_kg, unit)} "
+                f"({rec.sessions} sessions at {rec.reps}+ reps)"
+            )
 
     client = garmin_client.login()
-    matches = progress_matches(client, recs)
+    matches = progress_matches(client, activities, unit)
     matches = [match for match in matches if match["steps"] > 0]
     if not matches:
-        print("No matching Garmin workout-template steps found. Use `garmin-tracker update-workout` for a manual update.")
+        print("No progressive overload updates ready. Keep logging sets until an exercise hits 8+ reps for 2 straight sessions or stays above the Garmin workout target for 3 sessions.")
         return
 
     print("\nGarmin updates to apply:")
     for i, match in enumerate(matches, start=1):
         rec = match["recommendation"]
+        detail = (
+            f"{rec.sessions} sessions above configured target"
+            if rec.reason == "configured_weight"
+            else f"{rec.sessions} sessions at {rec.reps}+ reps"
+        )
         print(
             f"{i}. {match['workout_name']}: {rec.exercise} -> {format_weight(rec.target_weight_kg, unit)} "
-            f"({match['steps']} step{'s' if match['steps'] != 1 else ''})"
+            f"({match['steps']} step{'s' if match['steps'] != 1 else ''}; {detail})"
         )
 
     selected = prompt_selection(len(matches))
@@ -139,17 +147,25 @@ def progress_updates(unit: str) -> None:
     print(f"Updated {len(changed)} Garmin workout template(s).")
 
 
-def progress_matches(client: garmin_client.Garmin, recs: list[ProgressRecommendation]) -> list[dict[str, Any]]:
+def progress_matches(client: garmin_client.Garmin, activities: list[dict[str, Any]], unit: str) -> list[dict[str, Any]]:
     matches: list[dict[str, Any]] = []
+    history = exercise_history(activities)
     for summary in garmin_client.workouts(client):
         workout_id = summary.get("workoutId")
         if not workout_id:
             continue
         workout = garmin_client.workout_by_id(client, workout_id)
         workout_name = workout.get("workoutName") or summary.get("workoutName") or workout_id
-        for rec in recs:
-            steps = len(matching_strength_steps(workout, rec.exercise))
-            if steps:
+        for exercise, points in history.items():
+            steps = len(matching_strength_steps(workout, exercise))
+            if not steps:
+                continue
+            rec = recommendation_for_points(
+                points,
+                unit,
+                configured_strength_weight_kg(workout, exercise),
+            )
+            if rec:
                 matches.append(
                     {
                         "workout_id": workout_id,

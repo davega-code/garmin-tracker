@@ -30,6 +30,15 @@ def matching_strength_steps(workout: dict[str, Any], exercise_name: str) -> list
     return result
 
 
+def configured_strength_weight_kg(workout: dict[str, Any], exercise_name: str) -> float | None:
+    weights = [
+        float(step["weightValue"])
+        for step in matching_strength_steps(workout, exercise_name)
+        if step.get("weightValue") is not None
+    ]
+    return max(weights) if weights else None
+
+
 def _steps(value: Any) -> Iterator[dict[str, Any]]:
     if isinstance(value, dict):
         if "stepType" in value:
