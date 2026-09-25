@@ -12,7 +12,7 @@ const runs = allActivities
 
 const FOUR_WEEKS_MS = 28 * 24 * 60 * 60 * 1000;
 const KG_PER_LB = 1 / 2.2046226218;
-const OVERLOAD_REPS = 9;
+const OVERLOAD_REPS = 8;
 const OVERLOAD_SESSIONS = 2;
 
 let weightUnit = localStorage.getItem("gt-weight-unit") || "kg";
